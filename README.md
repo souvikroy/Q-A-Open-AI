@@ -9,4 +9,6 @@ Future scope :-
 
 1. Pre-processing of the PDF to find more useful information
 2. Chain generation from vectors
+3. Refactoring of the codes
+4. Modular code structure
 
