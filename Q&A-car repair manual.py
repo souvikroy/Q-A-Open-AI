@@ -11,7 +11,7 @@ openai.api_key = 'sk-proj-CyKOo4xpw7GrXR5TTZ3PT3BlbkFJMWanpEG728tIFj9J5RXd'
 pdf_path = "F:\Company_Data\Script_python\case_study\Car Repair Guide.pdf"
 
 def extract_text_from_pdf(pdf_path):
-    """Extracts text from a PDF file."""
+#Extracts text from a PDF file.
     document = fitz.open(pdf_path)
     text = ""
     for page_num in range(len(document)):
@@ -19,19 +19,16 @@ def extract_text_from_pdf(pdf_path):
         text += page.get_text()
     return text
 
-# Chunking - chain of thought criteria
+#Chunking - chain of thought criteria
 def chunk_text(text, chunk_size=1000):
-    """Chunks the text into segments of specified size."""
     return [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
 
 # Embedding
 def embed_texts(texts, model):
-    """Embeds a list of texts using the provided model."""
     return model.encode(texts)
 
 # Contextual similarity
 def find_relevant_chunks(chunks, query, model, top_k=3):
-    """Finds the most relevant chunks to the query using embeddings and cosine similarity."""
     query_embedding = model.encode([query])
     chunk_embeddings = embed_texts(chunks, model)
     similarities = cosine_similarity(query_embedding, chunk_embeddings)[0]
@@ -39,7 +36,7 @@ def find_relevant_chunks(chunks, query, model, top_k=3):
     return [chunks[i] for i in relevant_indices]
 
 def generate_answer(query, context):
-    """Generates an answer to the query using OpenAI API with the given context."""
+#Generates an answer to the query using OpenAI API with the given context.
     response = openai.Completion.create(
         engine="text-davinci-003",
         prompt=f"Based on the following context, answer the question:\n\n{context}\n\nQuestion: {query}\nAnswer:",
