@@ -3,6 +3,8 @@ import pandas as pd
 import json
 import time
 
+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
+
 # Claude API URL and API Key
 CLAUDE_API_URL = "https://api.anthropic.com/v1/complete"
 CLAUDE_API_KEY = "your_claude_api_key_here"
