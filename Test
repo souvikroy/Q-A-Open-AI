@@ -1,0 +1,104 @@
+import requests
+import pandas as pd
+import json
+import time
+
+# Claude API URL and API Key
+CLAUDE_API_URL = "https://api.anthropic.com/v1/complete"
+CLAUDE_API_KEY = "your_claude_api_key_here"
+
+# Function to send prompt to Claude API and get a response
+def get_similarity_from_claude(record1: str, record2: str) -> float:
+    headers = {
+        "x-api-key": CLAUDE_API_KEY,
+        "Content-Type": "application/json"
+    }
+
+    # Prompt construction
+    prompt = f"""
+    Compare the following two insurance records and provide a similarity score between 0 and 1, where 1 is an exact match and 0 is completely different.
+    
+    Record 1: {record1}
+    Record 2: {record2}
+
+    Provide only the numeric score (0 to 1).
+    """
+
+    data = {
+        "model": "claude-1",  # Or other versions of Claude if applicable
+        "prompt": prompt,
+        "max_tokens_to_sample": 10,
+        "stop_sequences": ["\n"]
+    }
+
+    response = requests.post(CLAUDE_API_URL, headers=headers, data=json.dumps(data))
+
+    if response.status_code == 200:
+        result = response.json()
+        # Extract similarity score from response
+        score = float(result["completion"].strip())
+        return score
+    else:
+        print(f"Error: {response.status_code}, {response.text}")
+        return 0.0
+
+# Load the dataset (Assuming CSV with columns: Name, Address, Phone, PolicyNumber)
+def load_data(file_path: str) -> pd.DataFrame:
+    return pd.read_csv(file_path)
+
+# Normalize and concatenate important fields for comparison
+def preprocess_record(record: pd.Series) -> str:
+    # Concatenate relevant fields for comparison
+    name = str(record['Name']) if pd.notna(record['Name']) else ""
+    address = str(record['Address']) if pd.notna(record['Address']) else ""
+    phone = str(record['Phone']) if pd.notna(record['Phone']) else ""
+    policy_number = str(record['PolicyNumber']) if pd.notna(record['PolicyNumber']) else ""
+    
+    return f"Name: {name}, Address: {address}, Phone: {phone}, Policy Number: {policy_number}"
+
+# Deduplicate records using Claude for similarity comparison
+def dedupe_records(df: pd.DataFrame, threshold: float = 0.85) -> pd.DataFrame:
+    deduped_records = []
+    seen_indices = set()
+
+    for i in range(len(df)):
+        if i in seen_indices:
+            continue
+        duplicates = [i]  # Store duplicate indices for current record
+
+        for j in range(i + 1, len(df)):
+            if j in seen_indices:
+                continue
+            record1 = preprocess_record(df.iloc[i])
+            record2 = preprocess_record(df.iloc[j])
+
+            # Get similarity score from Claude
+            similarity_score = get_similarity_from_claude(record1, record2)
+
+            if similarity_score > threshold:
+                duplicates.append(j)
+
+            # Sleep to avoid hitting rate limits
+            time.sleep(1)
+
+        # Mark duplicates as seen
+        seen_indices.update(duplicates)
+
+        # Pick the first record as the "master" record
+        deduped_records.append(df.iloc[duplicates[0]])
+
+    return pd.DataFrame(deduped_records)
+
+# Main execution workflow
+if __name__ == "__main__":
+    # Load your dataset
+    df = load_data("insurance_records.csv")
+    
+    # Deduplicate records based on Claude API
+    print("Deduplicating records using Claude...")
+    deduped_df = dedupe_records(df, threshold=0.85)
+
+    # Save deduplicated results
+    deduped_df.to_csv("deduplicated_insurance_records_claude.csv", index=False)
+
+    print("Deduplication completed. Results saved to deduplicated_insurance_records_claude.csv.")
